@@ -1,7 +1,7 @@
 (()=>{'use strict';
 if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r=5){let radii=Array.isArray(r)?r:[r];radii=radii.map(v=>Math.max(0,Number(v)||0));let tl=radii[0]||0,tr=radii[1]??tl,br=radii[2]??tl,bl=radii[3]??tr,limit=Math.min(Math.abs(w)/2,Math.abs(h)/2);tl=Math.min(tl,limit);tr=Math.min(tr,limit);br=Math.min(br,limit);bl=Math.min(bl,limit);this.moveTo(x+tl,y);this.lineTo(x+w-tr,y);this.quadraticCurveTo(x+w,y,x+w,y+tr);this.lineTo(x+w,y+h-br);this.quadraticCurveTo(x+w,y+h,x+w-br,y+h);this.lineTo(x+bl,y+h);this.quadraticCurveTo(x,y+h,x,y+h-bl);this.lineTo(x,y+tl);this.quadraticCurveTo(x,y,x+tl,y);this.closePath();return this}}
 const $=id=>document.getElementById(id),canvas=$('gameCanvas'),ctx=canvas.getContext('2d'),stage=$('stage');
-const ui={score:$('score'),high:$('highScore'),height:$('height'),finalScore:$('finalScore'),finalHeight:$('finalHeight'),tip:$('tip'),status:$('statusText'),start:$('startModal'),pause:$('pauseModal'),over:$('gameOverModal')};
+const ui={score:$('score'),high:$('highScore'),height:$('height'),tip:$('tip'),status:$('statusText'),start:$('startModal'),pause:$('pauseModal'),over:$('gameOverModal')};
 const fa=n=>String(Math.max(0,Math.floor(n))).replace(/[0-9]/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
 let tg=null;try{if(window.Eitaa?.WebApp){tg=window.Eitaa.WebApp;tg.ready();tg.expand()}}catch(_e){}
 const haptic=k=>{try{tg?.HapticFeedback?.impactOccurred?.(k)}catch(_e){}},notify=k=>{try{tg?.HapticFeedback?.notificationOccurred?.(k)}catch(_e){}};

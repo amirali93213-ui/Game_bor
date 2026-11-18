@@ -6,6 +6,25 @@ const startBtn=$('startBtn'),authHint=$('authHint'),rewardContinueBtn=$('rewardC
 const VERIFY_URL=window.EITAA_AUTH_VERIFY_URL||'https://borj-taadoli-auth.amirali93213.workers.dev';
 const ADIVERY_APP_ID = window.ADIVERY_APP_ID || '84ddec11-a227-417b-a6bc-14591707256b';
 const ADIVERY_REWARDED_PLACEMENT = window.ADIVERY_REWARDED_PLACEMENT || '903aec79-c36a-44a5-aaf9-74662ccf6981';
+const ADIVERY_START_BANNER = '8cf73653-4fba-4229-a779-66e3b7a0a82c';
+const ADIVERY_GAMEOVER_BANNER = '3480f52d-514e-4e7c-a110-2b524d073273';
+const bannerRequests = new Map();
+function requestBanner(placementId, containerId) {
+  const container = $(containerId);
+  if (!container || !window.Adivery || typeof window.Adivery.requestBannerAd !== 'function') return;
+  if (bannerRequests.has(placementId)) return bannerRequests.get(placementId);
+  const request = window.Adivery.requestBannerAd(placementId).then(ad => {
+    if (typeof ad.render === 'function') ad.render(container);
+    else if (typeof ad.mount === 'function') ad.mount(container);
+    else if (typeof ad.show === 'function') ad.show(container);
+    else throw new Error('Adivery banner has no render/mount/show method');
+    ad.recordImpression?.();
+    return ad;
+  }).catch(err => { bannerRequests.delete(placementId); console.error('Adivery banner error', err); });
+  bannerRequests.set(placementId, request);
+  return request;
+}
+requestBanner(ADIVERY_START_BANNER, 'startBanner');
 if (typeof window.Adivery !== 'undefined' && window.Adivery.configure) {
   try { window.Adivery.configure(ADIVERY_APP_ID); } catch(e){ console.error('Adivery config error', e); }
 }
@@ -37,7 +56,7 @@ function land(b,support,offset){let dx=Math.abs(offset),accuracy=dx/Math.max(1,s
 // Successful overlap is captured by the stack solver: zero bounce, high-friction, no runaway impulses.
 const perfect=accuracy<.13;score+=perfect?150+combo*35:Math.max(25,Math.round(100*(1-Math.min(accuracy,1))));if(perfect){combo++;addBurst(b.x,b.y,25);ui.status.textContent='تعادل عالی! +'+fa(150+combo*35);sound('perfect');notify('success')}else{combo=0;ui.status.textContent='خوب بود!';sound('land');haptic('medium')}blocks.push(b);active=null;ui.tip.textContent=perfect?'تعادل عالی! ✨':'مکعب بعدی در راه است';updateUI();if(spawnTimeout!==null)clearTimeout(spawnTimeout);spawnTimeout=setTimeout(()=>{spawnTimeout=null;if(state==='playing'&&!active)spawn()},300)}
 function updateUI(){ui.score.textContent=fa(score);if(score>best){best=score;saveBest()}ui.high.textContent=fa(best);ui.height.textContent=fa(Math.max(0,blocks.length-1))}
-function gameOver(){if(state!=='playing')return;state='over';active=null;if(rewardedUsedThisRun){rewardContinueBtn.hidden=true;rewardContinueBtn.disabled=true;rewardContinueBtn.innerText='فرصت ادامه با ویدیو مصرف شده'}else{rewardContinueBtn.hidden=false;rewardContinueBtn.disabled=false;rewardContinueBtn.innerText='تماشای ویدیو و ادامه بازی 🎬'}ui.over.classList.remove('hidden');ui.finalScore.textContent=fa(score);ui.finalHeight.textContent=fa(Math.max(0,blocks.length-1));ui.tip.textContent='برج سقوط کرد';sound('crash');notify('error');haptic('hard');if(score>best){best=score;saveBest()}ui.high.textContent=fa(best);if(spawnTimeout!==null){clearTimeout(spawnTimeout);spawnTimeout=null}setBackButtonVisible(true)}
+function gameOver(){if(state!=='playing')return;requestBanner(ADIVERY_GAMEOVER_BANNER,'gameOverBanner');state='over';active=null;if(rewardedUsedThisRun){rewardContinueBtn.hidden=true;rewardContinueBtn.disabled=true;rewardContinueBtn.innerText='فرصت ادامه با ویدیو مصرف شده'}else{rewardContinueBtn.hidden=false;rewardContinueBtn.disabled=false;rewardContinueBtn.innerText='تماشای ویدیو و ادامه بازی 🎬'}ui.over.classList.remove('hidden');ui.finalScore.textContent=fa(score);ui.finalHeight.textContent=fa(Math.max(0,blocks.length-1));ui.tip.textContent='برج سقوط کرد';sound('crash');notify('error');haptic('hard');if(score>best){best=score;saveBest()}ui.high.textContent=fa(best);if(spawnTimeout!==null){clearTimeout(spawnTimeout);spawnTimeout=null}setBackButtonVisible(true)}
 function physics(dt){if(state!=='playing')return;elapsed+=dt;swingPhase+=dt*1.15;let amp=Math.min(W*.24,78*scale),pendX=W/2+Math.sin(swingPhase)*amp;if(active&&!active.falling){active.x=pendX;active.y=HANG_SCREEN_Y-camY;active.theta=Math.sin(swingPhase)*.035}
 if(active?.falling){active.vy+=G*dt;active.x+=active.vx*dt;active.y+=active.vy*dt;active.vx*=Math.pow(FRICTION,dt*2.2);
 // Generous center-of-mass window; only catch blocks descending onto the current tower top.
@@ -55,8 +74,3 @@ if(state==='playing'||state==='paused'||state==='menu'){let hx=active&&!active.f
 for(let b of blocks)drawBlock(b);if(active)drawBlock(active,true);for(let p of particles){ctx.globalAlpha=Math.max(0,p.life/p.max);ctx.fillStyle=p.c;if(p.star){ctx.save();ctx.translate(p.x,p.y+camY);ctx.rotate(p.life*5);ctx.fillRect(-p.r/2,-p.r*1.7,p.r,p.r*3.4);ctx.fillRect(-p.r*1.7,-p.r/2,p.r*3.4,p.r);ctx.restore()}else{ctx.beginPath();ctx.arc(p.x,p.y+camY,p.r,0,Math.PI*2);ctx.fill()}}ctx.globalAlpha=1;if(state==='playing'){ctx.fillStyle='#69899b';ctx.font='12px Tahoma';ctx.textAlign='center';ctx.fillText('〰 باد ملایم',W/2,28)}}
 let framePending=false;function scheduleFrame(){if(framePending)return;framePending=true;try{requestAnimationFrame(frame)}catch(_e){setTimeout(()=>frame(performance.now()),16)}}function frame(ts){framePending=false;try{let dt=Math.min(.025,(ts-last)/1000||0);last=ts;if(state==='playing')physics(dt);draw()}catch(error){try{console.error('Game frame error:',error)}catch(_e){}}finally{scheduleFrame()}}scheduleFrame();
 })();
-
-// Adivery banner placements
-const ADIVERY_BANNER_START='8cf73653-4fba-4229-a779-66e3b7a0a82c',ADIVERY_BANNER_GAMEOVER='3480f52d-514e-4e7c-a110-2b524d073273';
-function loadAdiveryBanners(){const api=window.Adivery;if(!api||typeof api.configure!=='function')return;try{api.configure(ADIVERY_APP_ID)}catch(e){console.error('Adivery configure error',e);return}if(typeof api.requestBannerAd!=='function')return;[['startBanner',ADIVERY_BANNER_START],['gameOverBanner',ADIVERY_BANNER_GAMEOVER]].forEach(async([id,key])=>{const host=$(id);if(!host)return;try{const ad=await api.requestBannerAd(key);if(ad&&typeof ad.show==='function')await ad.show(host);else if(typeof api.showBannerAd==='function')await api.showBannerAd(key,host)}catch(e){console.error('Adivery banner error',key,e)}})}
-if(window.Adivery)loadAdiveryBanners();else addEventListener('load',loadAdiveryBanners,{once:true});
